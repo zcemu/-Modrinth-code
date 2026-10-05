@@ -1,37 +1,22 @@
-# Portable Modrinth App: cloud build for Windows (no local toolchain needed).
+# Portable Modrinth App (Windows) — build + auto release.
+# Place this file at .github/workflows/portable-build.yml in your fork.
 #
-# One-time setup:
-#   1. Fork modrinth/code on GitHub.
-#   2. Copy apply_portable.py (sibling of this file) to the fork's root,
-#      commit + push.
-#   3. Copy this file to the fork's .github/workflows/portable-build.yml,
-#      commit + push.
-#   4. Open the fork's Actions tab and manually run
-#      "Build portable Modrinth App (Windows)".
-#   5. When it finishes (first build takes ~30-60 min), download the
-#      `modrinth-app-portable-windows` artifact.
+# - Manual run (Actions -> Run workflow): builds, uploads the zip as an artifact.
+# - Push a tag like `portable-v1`: builds, then publishes a GitHub Release
+#   with Modrinth-App-Portable.zip attached (exe + empty portable.txt).
 #
-# Build notes (verified against modrinth/code main, 2026-10-05):
-#   - Uses the stock tauri.conf.json (productName/mainBinaryName "Modrinth App",
-#     identifier "ModrinthApp"). It has NO signCommand and NO updater, so the
-#     fork build needs neither DigiCert secrets nor dasel surgery. Building
-#     with tauri-release.conf.json instead would require stripping
-#     bundle.windows.signCommand (jsign) and would enable the auto-updater --
-#     which must NOT happen, because a portable build must never auto-update
-#     itself into an official release.
-#   - The `tauri` package script exists ("tauri": "tauri"), so
-#     `pnpm --filter=@modrinth/app run tauri build` works out of the box.
-#   - .nvmrc (Node 24.15.0) and packages/app-lib/.env.prod both exist upstream.
+# Requires in the repo root: apply_portable.py (already applied before build),
+# README-portable-en.md (used as release notes).
 #
-# Usage: put "Modrinth App.exe" anywhere (e.g. D:\MC\), create an empty file
-# named `portable.txt` next to it, and launch. All launcher data
-# (database, logs, backups, instances, downloads, WebView2 cache) goes to
-# .\data\ next to the exe. Without portable.txt it behaves like stock.
+# NOTE: untested against the real repo state; first build takes ~30-60 min.
 
 name: Build portable Modrinth App (Windows)
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - "portable-*"
 
 jobs:
   build:
@@ -40,23 +25,21 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+      - name: Apply portable-mode patch
+        shell: pwsh
+        run: python apply_portable.py
 
-      - name: Setup Node.js
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: pnpm
 
-      - name: Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          rustflags: ' '
-
-      - name: Apply portable-mode source change
-        shell: bash
-        run: python apply_portable.py
+      - name: Enable Corepack (pnpm)
+        run: corepack enable
 
       - name: Use prod env for app-lib
         shell: bash
@@ -65,14 +48,40 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build Windows app (NSIS, unsigned, no updater)
+      - name: Build Windows app (no bundle, no signing)
+        run: pnpm --filter=@modrinth/app run tauri build --bundles none
         shell: pwsh
-        run: pnpm --filter=@modrinth/app run tauri build --bundles nsis
 
-      - name: Upload portable exe + installer
+      - name: Make portable zip (exe + portable.txt)
+        shell: pwsh
+        run: |
+          New-Item -ItemType File -Path "target/release/portable.txt" -Force
+          Compress-Archive -Path "target/release/Modrinth App.exe", "target/release/portable.txt" `
+            -DestinationPath "target/release/Modrinth-App-Portable.zip" -Force
+
+      - name: Upload portable zip
         uses: actions/upload-artifact@v4
         with:
           name: modrinth-app-portable-windows
-          path: |
-            target/release/Modrinth App.exe
-            target/release/bundle/nsis/*.exe
+          path: target/release/Modrinth-App-Portable.zip
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/portable-')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Download portable zip
+        uses: actions/download-artifact@v4
+        with:
+          name: modrinth-app-portable-windows
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Modrinth-App-Portable.zip
+          body_path: README-portable-en.md

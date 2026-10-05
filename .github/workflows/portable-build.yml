@@ -50,8 +50,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build Windows app (no bundle, no signing)
-        run: pnpm --filter=@modrinth/app run tauri build --bundles none
+      - name: Build Windows app (NSIS, no signing)
+        # NOTE: this Tauri CLI only accepts msi/nsis for --bundles (no `none`
+        # option). The raw exe is built before bundling anyway, which is what
+        # we actually ship in the portable zip.
+        run: pnpm --filter=@modrinth/app run tauri build --bundles nsis
         shell: pwsh
 
       - name: Make portable zip (exe + portable.txt)

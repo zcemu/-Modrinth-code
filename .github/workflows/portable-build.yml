@@ -36,7 +36,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+          # NOTE: do NOT add `cache: pnpm` here — setup-node would call `pnpm`
+          # before corepack installs it, failing with "Unable to locate
+          # executable file: pnpm".
 
       - name: Enable Corepack (pnpm)
         run: corepack enable

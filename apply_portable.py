@@ -99,6 +99,13 @@ def replace_once(path: pathlib.Path, old: str, new: str) -> None:
     print(f"patched: {path}")
 
 
+# Upstream bugfix (2026-10-05): newer tauri's `Builder<R, C>` no longer infers
+# the config type param from a bare `Builder::new(...)` call (E0283).
+# Pin C = () like the api/* plugins already do.
+OLD_WINDOW_FRAME = 'tauri::plugin::Builder::new("window-frame")'
+NEW_WINDOW_FRAME = 'tauri::plugin::Builder::<_, ()>::new("window-frame")'
+
+
 def main() -> None:
     for p in (DIRS_RS, MAIN_RS):
         if not p.is_file():
@@ -106,12 +113,14 @@ def main() -> None:
 
     replace_once(DIRS_RS, OLD_DIRS_FN, NEW_DIRS_FN)
     replace_once(MAIN_RS, OLD_MAIN_ANCHOR, NEW_MAIN_ANCHOR)
+    replace_once(MAIN_RS, OLD_WINDOW_FRAME, NEW_WINDOW_FRAME)
 
     # Sanity check: both markers must be present after patching.
     dirs_text = DIRS_RS.read_text(encoding="utf-8")
     main_text = MAIN_RS.read_text(encoding="utf-8")
     assert "portable_data_dir" in dirs_text, "dirs.rs patch did not stick"
     assert "WEBVIEW2_USER_DATA_FOLDER" in main_text, "main.rs patch did not stick"
+    assert 'Builder::<_, ()>::new("window-frame")' in main_text, "window-frame fix did not stick"
     print("portable-mode source change applied successfully.")
 
 

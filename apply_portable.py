@@ -65,7 +65,7 @@ NEW_DIRS_FN = """\
 
 OLD_MAIN_ANCHOR = """\
 fn main() {
-    #[cfg(feature = "export-app-events")]
+    let runtime = tokio::runtime::Builder::new_multi_thread()
 """
 
 NEW_MAIN_ANCHOR = """\
@@ -86,12 +86,15 @@ fn main() {
         }
     }
 
-    #[cfg(feature = "export-app-events")]
+    let runtime = tokio::runtime::Builder::new_multi_thread()
 """
 
 
 def replace_once(path: pathlib.Path, old: str, new: str) -> None:
     text = path.read_text(encoding="utf-8")
+    if new in text:
+        print(f"already applied, skipping: {path}")
+        return
     count = text.count(old)
     if count != 1:
         sys.exit(f"ERROR: anchor found {count} times (expected 1) in {path}")

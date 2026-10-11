@@ -1,20 +1,22 @@
-# Modrinth App 便携版（非官方 / unofficial portable build）
+# PortaCraft 便携版（非官方 / unofficial portable build）
 
 > **声明 / Disclaimer**：本构建为个人自用，公开发布仅为方便有同样需求的人下载，
-> 并非作为正式软件提供。除便携模式（`portable.txt`）及移除 Modrinth+ 升级推广入口外，
-> 其余均为 Modrinth 官方原版功能。本项目与 Modrinth 官方无关。
+> 并非作为正式软件提供。基于 Modrinth 官方 [`modrinth/code`](https://github.com/modrinth/code)
+> 源码构建，仅增加便携模式（`portable.txt`）、移除 Modrinth+ 升级推广入口，并替换
+> 名称与图标以避免与官方品牌混淆；其余均为官方原版功能。本项目与 Modrinth 官方无关。
 >
 > This build is for personal use. It is published publicly only for the convenience
-> of anyone who wants it — it is not offered as official software. Except for portable
-> mode (`portable.txt`) and the removal of the Modrinth+ upsell entry, everything else
-> is stock official Modrinth App functionality. This project is not affiliated
-> with Modrinth.
+> of anyone who wants it — it is not offered as official software. Built from the
+> official [`modrinth/code`](https://github.com/modrinth/code) source with only
+> portable mode (`portable.txt`) added, the Modrinth+ upsell entry removed, and the
+> name/icons replaced to avoid confusion with the official brand; everything else
+> is stock official functionality. This project is not affiliated with Modrinth.
 
 ## 使用方法（中文）
 
-1. 下载 `Modrinth-App-Portable.zip`，解压到任意位置（推荐放到非系统盘，如 `D:\Games\ModrinthApp`）。
-2. 确保 `portable.txt`（空文件）跟 `Modrinth App.exe` 放在同一目录——zip 里已经自带，通常不用再动。
-3. 运行 `Modrinth App.exe`。
+1. 下载 `PortaCraft-Portable.zip`，解压到任意位置（推荐放到非系统盘，如 `D:\Games\PortaCraft`）。
+2. 确保 `portable.txt`（空文件）跟 `PortaCraft.exe` 放在同一目录——zip 里已经自带，通常不用再动。
+3. 运行 `PortaCraft.exe`。
 
 首次启动会在 exe 旁边自动创建 `data/` 文件夹，启动器的**所有数据**（数据库、日志、
 备份、实例、下载、WebView2 缓存）都存放在 `data/` 里，不再往 C 盘写：
@@ -35,12 +37,12 @@
 
 ## How to use (English)
 
-1. Download `Modrinth-App-Portable.zip` and extract it anywhere you like
-   (e.g. `D:\Games\ModrinthApp` — a non-system drive is recommended).
+1. Download `PortaCraft-Portable.zip` and extract it anywhere you like
+   (e.g. `D:\Games\PortaCraft` — a non-system drive is recommended).
 2. Make sure an (empty) file named `portable.txt` sits next to
-   `Modrinth App.exe` — it's already included in the zip, so usually
+   `PortaCraft.exe` — it's already included in the zip, so usually
    there's nothing to do.
-3. Run `Modrinth App.exe`.
+3. Run `PortaCraft.exe`.
 
 On first launch a `data/` folder is created next to the exe. **Everything**
 the launcher stores — database, logs, backups, instances, downloads,

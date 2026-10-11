@@ -6,7 +6,7 @@
 #   with Modrinth-App-Portable.zip attached (exe + empty portable.txt).
 #
 # Requires in the repo root: apply_portable.py (already applied before build),
-# README-portable-en.md (used as release notes).
+# README-portable.md (bilingual, used as release notes).
 #
 # NOTE: untested against the real repo state; first build takes ~30-60 min.
 
@@ -32,6 +32,16 @@ jobs:
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Cache Rust build artifacts
+        # Cold Rust compiles take 20-40 min on the windows-latest runner.
+        # The cache makes later rebuilds (fork syncs, portable-v2/v3 tags)
+        # incremental. Cache key follows the toolchain + Cargo.lock, so a
+        # Theseus upstream update that changes deps naturally misses and
+        # repopulates.
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "apps/app"
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -54,6 +64,10 @@ jobs:
         # NOTE: this Tauri CLI only accepts msi/nsis for --bundles (no `none`
         # option). The raw exe is built before bundling anyway, which is what
         # we actually ship in the portable zip.
+        # NOTE 2: `windows-latest` (Server 2025 image) does NOT ship NSIS, but
+        # that doesn't matter — the Tauri v2 bundler self-provisions NSIS 3.11
+        # by downloading it into %LOCALAPPDATA%\tauri\NSIS on first use
+        # (verified in tauri-bundler source: bundle/windows/nsis/mod.rs).
         run: pnpm --filter=@modrinth/app run tauri build --bundles nsis
         shell: pwsh
 
@@ -89,4 +103,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: Modrinth-App-Portable.zip
-          body_path: README-portable-en.md
+          body_path: README-portable.md

@@ -29,6 +29,34 @@ jobs:
         shell: pwsh
         run: python apply_portable.py
 
+      - name: Sync version with latest official release
+        # The repo ships version "1.0.0-local"; official CI overwrites it from
+        # the release tag at build time. Do the same using the newest upstream
+        # tag so the portable build reports the real official version.
+        shell: bash
+        run: |
+          TAG=$(git ls-remote --tags --sort='-v:refname' https://github.com/modrinth/code.git 'v*.*' | head -n 1 | sed 's/.*refs\/tags\///' | sed 's/\^{}$//')
+          VER="${TAG#v}"
+          echo "Official tag: $TAG -> version $VER"
+          python - "$VER" <<'PYEOF'
+          import json, pathlib, re, sys
+          ver = sys.argv[1]
+          if not re.fullmatch(r"\d+\.\d+\.\d+", ver):
+              sys.exit(f"bad version: {ver}")
+          for p in ("apps/app/Cargo.toml", "packages/app-lib/Cargo.toml"):
+              f = pathlib.Path(p)
+              t = f.read_text(encoding="utf-8")
+              t2, n = re.subn(r'(?m)^version = "1\.0\.0-local"$', f'version = "{ver}"', t)
+              if n != 1:
+                  sys.exit(f"version anchor not found exactly once in {p}")
+              f.write_text(t2, encoding="utf-8")
+          jf = pathlib.Path("apps/app-frontend/package.json")
+          j = json.loads(jf.read_text(encoding="utf-8"))
+          j["version"] = ver
+          jf.write_text(json.dumps(j, indent=2) + "\n", encoding="utf-8")
+          print(f"version synced to {ver}")
+          PYEOF
+
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 

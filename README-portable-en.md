@@ -1,106 +1,63 @@
-# Portable Modrinth App (Windows) — build + auto release.
-# Place this file at .github/workflows/portable-build.yml in your fork.
-#
-# - Manual run (Actions -> Run workflow): builds, uploads the zip as an artifact.
-# - Push a tag like `portable-v1`: builds, then publishes a GitHub Release
-#   with Modrinth-App-Portable.zip attached (exe + empty portable.txt).
-#
-# Requires in the repo root: apply_portable.py (already applied before build),
-# README-portable.md (bilingual, used as release notes).
-#
-# NOTE: untested against the real repo state; first build takes ~30-60 min.
+# Modrinth App 便携版（非官方 / unofficial portable build）
 
-name: Build portable Modrinth App (Windows)
+> **声明 / Disclaimer**：本构建为个人自用，公开发布仅为方便有同样需求的人下载，
+> 并非作为正式软件提供。除便携模式（`portable.txt`）及移除 Modrinth+ 升级推广入口外，
+> 其余均为 Modrinth 官方原版功能。本项目与 Modrinth 官方无关。
+>
+> This build is for personal use. It is published publicly only for the convenience
+> of anyone who wants it — it is not offered as official software. Except for portable
+> mode (`portable.txt`) and the removal of the Modrinth+ upsell entry, everything else
+> is stock official Modrinth App functionality. This project is not affiliated
+> with Modrinth.
 
-on:
-  workflow_dispatch:
-  push:
-    tags:
-      - "portable-*"
+## 使用方法（中文）
 
-jobs:
-  build:
-    runs-on: windows-latest
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
+1. 下载 `Modrinth-App-Portable.zip`，解压到任意位置（推荐放到非系统盘，如 `D:\Games\ModrinthApp`）。
+2. 确保 `portable.txt`（空文件）跟 `Modrinth App.exe` 放在同一目录——zip 里已经自带，通常不用再动。
+3. 运行 `Modrinth App.exe`。
 
-      - name: Apply portable-mode patch
-        shell: pwsh
-        run: python apply_portable.py
+首次启动会在 exe 旁边自动创建 `data/` 文件夹，启动器的**所有数据**（数据库、日志、
+备份、实例、下载、WebView2 缓存）都存放在 `data/` 里，不再往 C 盘写：
 
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+- 重装系统没影响，只要把整个文件夹放在非系统盘。
+- 整文件夹拷到另一台电脑直接能用。
+- 删掉 `portable.txt` 即可回到官方默认行为（数据存 `%APPDATA%\ModrinthApp`）。
 
-      - name: Cache Rust build artifacts
-        # Cold Rust compiles take 20-40 min on the windows-latest runner.
-        # The cache makes later rebuilds (fork syncs, portable-v2/v3 tags)
-        # incremental. Cache key follows the toolchain + Cargo.lock, so a
-        # Theseus upstream update that changes deps naturally misses and
-        # repopulates.
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: "apps/app"
+### 注意事项
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          # NOTE: do NOT add `cache: pnpm` here — setup-node would call `pnpm`
-          # before corepack installs it, failing with "Unable to locate
-          # executable file: pnpm".
+- **未签名**：Windows SmartScreen 在首次运行时会弹警告，点 *More info* → *Run anyway*。
+- **无自动更新**：这是故意的——官方更新会把便携版覆盖成正式版，便携模式就丢了。
+  想升级就下载新版便携包，把 exe 换掉就行，`data/`（实例、存档、设置）不受影响。
+- 源码来自官方 [`modrinth/code`](https://github.com/modrinth/code)，只加了一个
+  约 20 行的便携模式补丁（`apply_portable.py`，见本仓库根目录）。
 
-      - name: Enable Corepack (pnpm)
-        run: corepack enable
+---
 
-      - name: Use prod env for app-lib
-        shell: bash
-        run: cp packages/app-lib/.env.prod packages/app-lib/.env
+## How to use (English)
 
-      - name: Install dependencies
-        run: pnpm install
+1. Download `Modrinth-App-Portable.zip` and extract it anywhere you like
+   (e.g. `D:\Games\ModrinthApp` — a non-system drive is recommended).
+2. Make sure an (empty) file named `portable.txt` sits next to
+   `Modrinth App.exe` — it's already included in the zip, so usually
+   there's nothing to do.
+3. Run `Modrinth App.exe`.
 
-      - name: Build Windows app (NSIS, no signing)
-        # NOTE: this Tauri CLI only accepts msi/nsis for --bundles (no `none`
-        # option). The raw exe is built before bundling anyway, which is what
-        # we actually ship in the portable zip.
-        # NOTE 2: `windows-latest` (Server 2025 image) does NOT ship NSIS, but
-        # that doesn't matter — the Tauri v2 bundler self-provisions NSIS 3.11
-        # by downloading it into %LOCALAPPDATA%\tauri\NSIS on first use
-        # (verified in tauri-bundler source: bundle/windows/nsis/mod.rs).
-        run: pnpm --filter=@modrinth/app run tauri build --bundles nsis
-        shell: pwsh
+On first launch a `data/` folder is created next to the exe. **Everything**
+the launcher stores — database, logs, backups, instances, downloads,
+WebView2 cache — lives inside `data/`. Nothing important is written to `C:`.
 
-      - name: Make portable zip (exe + portable.txt)
-        shell: pwsh
-        run: |
-          New-Item -ItemType File -Path "target/release/portable.txt" -Force
-          Compress-Archive -Path "target/release/Modrinth App.exe", "target/release/portable.txt" `
-            -DestinationPath "target/release/Modrinth-App-Portable.zip" -Force
+- Reinstalling Windows doesn't affect it: just keep the folder on a non-system drive.
+- Copy the whole folder to a different PC and it just works.
+- Delete `portable.txt` to fall back to the official default behavior
+  (data stored in `%APPDATA%\ModrinthApp`).
 
-      - name: Upload portable zip
-        uses: actions/upload-artifact@v4
-        with:
-          name: modrinth-app-portable-windows
-          path: target/release/Modrinth-App-Portable.zip
+### Notes
 
-  release:
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/portable-')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Download portable zip
-        uses: actions/download-artifact@v4
-        with:
-          name: modrinth-app-portable-windows
-
-      - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: Modrinth-App-Portable.zip
-          body_path: README-portable.md
+- **Unsigned binary**: Windows SmartScreen will warn on first run —
+  click *More info* → *Run anyway*.
+- **No auto-updater** — that's intentional: an official update would overwrite
+  the portable build and kill portable mode. To update, download the newer
+  portable release and replace the exe — your `data/` folder (instances, worlds,
+  settings) stays untouched.
+- Source: official [`modrinth/code`](https://github.com/modrinth/code)
+  plus a ~20-line portable-mode patch (see `apply_portable.py` in this repo).

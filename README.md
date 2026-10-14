@@ -12,7 +12,10 @@ Except for portable mode (portable.txt) and the removal of the Modrinth+
 upsell entry, everything else is stock official Modrinth App functionality.
 This project is not affiliated with Modrinth.
 
+---
 
-## License
+<picture>
+	<source media="(prefers-color-scheme: light)" srcset=".github/assets/monorepo_cover_light.png">
+	<img alt="Modrinth Monorepo Cover" src=".github/assets/monorepo_cover.png">
+</picture>
 
-All packages in this repository are licensed under their respective licenses. Refer to the LICENSE file in each package for more information.

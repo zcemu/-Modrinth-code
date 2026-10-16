@@ -70,13 +70,54 @@ def main() -> None:
         shutil.copy2(ICON_SRC_DIR / name, ICON_DST_DIR / name)
         print(f"icon replaced: apps/app/icons/{name}")
 
+    strip_promotion_ads()
+
     # Sanity check.
     conf = TAURI_CONF.read_text(encoding="utf-8")
     assert '"productName": "PortaCraft"' in conf, "productName rebrand did not stick"
     assert '"mainBinaryName": "PortaCraft"' in conf, "mainBinaryName rebrand did not stick"
     assert '"identifier": "com.portacraft.app"' in conf, "identifier rebrand did not stick"
     assert '"title": "PortaCraft"' in conf, "window title rebrand did not stick"
+    promo = PROMOTION_VUE.read_text(encoding="utf-8")
+    assert "modrinth.plus" not in promo, "upsell link was not removed"
+    assert "ad-parent" not in promo, "hosting ad was not removed"
     print("PortaCraft rebrand applied successfully.")
+
+
+PROMOTION_VUE = ROOT / "apps/app-frontend/src/app/shell/sidebar/promotion.vue"
+
+
+def strip_promotion_ads() -> None:
+    """Empty the <template> of promotion.vue (upsell link + hosting ad).
+
+    Verifies the expected ad markers are present before stripping, so an
+    upstream restructure fails loudly instead of shipping an unpatched build.
+    """
+    p = PROMOTION_VUE
+    if not p.is_file():
+        sys.exit(f"ERROR: not found: {p} (run this script from the repo root)")
+    text = p.read_text(encoding="utf-8")
+    if "<!-- PortaCraft: promo removed -->" in text:
+        print(f"already applied, skipping: {p}")
+        return
+    start = text.find("<template>")
+    end = text.find("</template>")
+    if start == -1 or end == -1 or end < start:
+        sys.exit(f"ERROR: <template> block not found in {p}")
+    inner = text[start + len("<template>"):end]
+    for marker in ("modrinth.plus", "ad-parent"):
+        if marker not in inner:
+            sys.exit(
+                f"ERROR: expected ad marker {marker!r} not found in {p} — "
+                "upstream changed the file, patch needs review"
+            )
+    new = (
+        text[: start + len("<template>")]
+        + "\n<!-- PortaCraft: promo removed -->\n"
+        + text[end:]
+    )
+    p.write_text(new, encoding="utf-8")
+    print(f"patched: {p} [upsell link + hosting ad removed]")
 
 
 if __name__ == "__main__":
